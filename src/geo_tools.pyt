@@ -2,6 +2,7 @@
 import arcpy
 import sys
 import locale
+import os
 
 from collections import namedtuple
 
@@ -58,7 +59,7 @@ class Table_builder(object):
             parameterType="Optional",
             direction="Input")
         # field_mapping.columns = [["GPSting", "parameters"], ["GPLong", "Field"]]
-        input_layer.value = 'D:\\DS\\table_builder\\data\\DHSBore_pls_LC24.shp'
+        input_layer.value = os.path.join(os.getcwd(), 'DHSBore_pls_LC24.shp')
         # input_layer.value = 'D:\\DS\\table_builder\\data\\test_map.mxd'
         # field_mapping.parameterDependencies = [input_layer.name]
         params = [input_layer, field_mapping, table_offset]
@@ -164,7 +165,7 @@ class Table_builder(object):
              ],
         ]
         table.extend([arcpy.Polyline(arcpy.Array([arcpy.Point(*pt) for pt in line])) for line in vertical_lines])
-        arcpy.CopyFeatures_management(table, 'D:\\DS\\table_builder\\data\\test.shp')
+        arcpy.CopyFeatures_management(table, os.path.join(os.getcwd(), 'test.shp'))
 
         annotations = []
         hole_names = arcpy.Array([arcpy.Point(hole.x, bottom_point - offset - table_width) for hole in hole_list])
