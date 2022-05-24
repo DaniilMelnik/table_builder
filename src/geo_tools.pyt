@@ -31,7 +31,7 @@ class TableBuilder(object):
     def getParameterInfo(self):
         """Define parameter definitions"""
         input_layer = arcpy.Parameter(
-            displayName="input layer",
+            displayName="input layer (name and length field required)",
             name="hole_layer",
             datatype="GPFeatureLayer",
             parameterType="Required",
