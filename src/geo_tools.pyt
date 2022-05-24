@@ -42,6 +42,18 @@ class TableBuilder(object):
             datatype="DEFolder",
             parameterType="Required",
             direction="Input")
+        name_field = arcpy.Parameter(
+            displayName="name_field",
+            name="name_field",
+            datatype="GPString",
+            parameterType="Required",
+            direction="Input")
+        length_field = arcpy.Parameter(
+            displayName="length_field",
+            name="length_field",
+            datatype="GPString",
+            parameterType="Required",
+            direction="Input")
         table_offset = arcpy.Parameter(
             displayName="offset",
             name="in_features",
@@ -66,11 +78,16 @@ class TableBuilder(object):
             datatype="GPDouble",
             parameterType="Optional",
             direction="Input")
+
+        name_field.value = 'name'
+        length_field.value = 'length'
+
         # testing
         # input_layer.value = os.path.join(os.getcwd(), 'DHSBore_pls_LC24.shp')
         # output_folder.value = os.getcwd()
 
-        params = [input_layer, output_folder, table_offset, table_width, table_boundaries_offset, field_names_offset]
+        params = [input_layer, output_folder, name_field, length_field, table_offset, table_width,
+                  table_boundaries_offset, field_names_offset]
         return params
 
     def isLicensed(self):
@@ -97,17 +114,21 @@ class TableBuilder(object):
         """The source code of the tool."""
         input_file = parameters[0].value
         output_path = str(parameters[1].value)
-        table_offset = parameters[2].value if parameters[2].value else 50
-        table_width = parameters[3].value if parameters[3].value else 5
-        table_boundaries_offset = parameters[4].value if parameters[4].value else 10
-        field_names_offset = parameters[5].value if parameters[5].value else 50
+        name_field = parameters[2].value if parameters[2].value else 'name'
+        length_field = parameters[3].value if parameters[3].value else 'length'
+        table_offset = parameters[4].value if parameters[4].value else 50
+        table_width = parameters[5].value if parameters[5].value else 5
+        table_boundaries_offset = parameters[6].value if parameters[6].value else 10
+        field_names_offset = parameters[7].value if parameters[7].value else 50
 
         tb = table_builder.TableBuilder(
             input_file,
             offset=table_offset,
             table_width=table_width,
             table_boundaries_offset=table_boundaries_offset,
-            field_names_offset=field_names_offset
+            field_names_offset=field_names_offset,
+            name_field=name_field,
+            length_field=length_field
         )
 
         table = tb.create_table()

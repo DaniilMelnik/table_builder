@@ -8,9 +8,12 @@ Hole = namedtuple('Hole', ['name', 'x', 'y', 'length'])
 
 
 class TableBuilder(object):
-    def __init__(self, hole_path, offset=50, table_width=5, table_boundaries_offset=10, field_names_offset=50):
+    def __init__(self, hole_path, offset=50, table_width=5, table_boundaries_offset=10, field_names_offset=50,
+                 name_field='name', length_field='length'):
         self.bottom_point = None
         self.left_hole_x, self.right_hole_x = None, None
+        self.name_field = name_field
+        self.length_field = length_field
         self.hole_list = self._get_holes(hole_path)
         self.offset = offset
         self.table_width = table_width
@@ -20,7 +23,7 @@ class TableBuilder(object):
 
     def _get_holes(self, path):
         hole_list = []
-        with arcpy.da.SearchCursor(path, ['name', "SHAPE@", 'length']) as cursor:
+        with arcpy.da.SearchCursor(path, [self.name_field, "SHAPE@", self.length_field]) as cursor:
             for row in cursor:
                 hole_list.append(Hole(row[0], row[1].firstPoint.X, row[1].firstPoint.Y, row[2]))
                 hole_bottom_point = row[1].lastPoint.Y
