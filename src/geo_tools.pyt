@@ -113,7 +113,7 @@ class TableBuilder(object):
     def execute(self, parameters, messages):
         """The source code of the tool."""
         input_file = parameters[0].value
-        output_path = str(parameters[1].value)
+        output_path = parameters[1].valueAsText
         name_field = parameters[2].value if parameters[2].value else 'name'
         length_field = parameters[3].value if parameters[3].value else 'length'
         table_offset = parameters[4].value if parameters[4].value else 50
