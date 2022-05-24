@@ -1,17 +1,13 @@
 # encoding=utf-8
 import arcpy
-import sys
-import locale
 import os
 
-from collections import namedtuple
+import table_builder
+import utils
 
-Coding_CMD_Window = sys.stdout.encoding
-Coding_OS = locale.getpreferredencoding()
-Coding_Script = sys.getdefaultencoding()
-Coding2Use = Coding_CMD_Window
-if any('arcpy' in importedmodules for importedmodules in sys.modules):
-    Coding2Use = Coding_OS
+arcpy.env.overwriteOutput = True
+reload(table_builder)
+reload(utils)
 
 
 class Toolbox(object):
@@ -22,10 +18,10 @@ class Toolbox(object):
         self.alias = ""
 
         # List of tool classes associated with this toolbox
-        self.tools = [Table_builder]
+        self.tools = [TableBuilder]
 
 
-class Table_builder(object):
+class TableBuilder(object):
     def __init__(self):
         """Define the tool (tool name is the name of the class)."""
         self.label = "Table_builder"
@@ -40,17 +36,11 @@ class Table_builder(object):
             datatype="GPFeatureLayer",
             parameterType="Required",
             direction="Input")
-        # input_layer = arcpy.Parameter(
-        #     displayName="input map",
-        #     name="map_path",
-        #     datatype="DEMapDocument",
-        #     parameterType="Required",
-        #     direction="Input")
-        field_mapping = arcpy.Parameter(
-            displayName="field mapping",
-            name="hole_fields",
-            datatype="GPFieldMapping",
-            parameterType="Optional",
+        output_folder = arcpy.Parameter(
+            displayName="output_folder",
+            name="output_folder",
+            datatype="DEFolder",
+            parameterType="Required",
             direction="Input")
         table_offset = arcpy.Parameter(
             displayName="offset",
@@ -58,11 +48,29 @@ class Table_builder(object):
             datatype="GPDouble",
             parameterType="Optional",
             direction="Input")
-        # field_mapping.columns = [["GPSting", "parameters"], ["GPLong", "Field"]]
-        input_layer.value = os.path.join(os.getcwd(), 'DHSBore_pls_LC24.shp')
-        # input_layer.value = 'D:\\DS\\table_builder\\data\\test_map.mxd'
-        # field_mapping.parameterDependencies = [input_layer.name]
-        params = [input_layer, field_mapping, table_offset]
+        table_width = arcpy.Parameter(
+            displayName="table_width",
+            name="table_width",
+            datatype="GPDouble",
+            parameterType="Optional",
+            direction="Input")
+        table_boundaries_offset = arcpy.Parameter(
+            displayName="table_boundaries_offset",
+            name="table_boundaries_offset",
+            datatype="GPDouble",
+            parameterType="Optional",
+            direction="Input")
+        field_names_offset = arcpy.Parameter(
+            displayName="field_names_offset",
+            name="field_names_offset",
+            datatype="GPDouble",
+            parameterType="Optional",
+            direction="Input")
+        # testing
+        # input_layer.value = os.path.join(os.getcwd(), 'DHSBore_pls_LC24.shp')
+        # output_folder.value = os.getcwd()
+
+        params = [input_layer, output_folder, table_offset, table_width, table_boundaries_offset, field_names_offset]
         return params
 
     def isLicensed(self):
@@ -73,19 +81,10 @@ class Table_builder(object):
         """Modify the values and properties of parameters before internal
         validation is performed.  This method is called whenever a parameter
         has been changed."""
-        # if parameters[0].value:
-        #     parameters[1].enabled = True
-        # else:
-        #     parameters[1].enabled = False
-        # if parameters[0].altered:
-        #     inputTable = parameters[0].value
-        #     #
-        #     # # add a temporary item to the field mappings list
-        #     # # can be removed later by calling parameters[1].value.removeFieldMap(0)
-        #     parameters[1].value = str('Empty')
-        #     #
-        #     # # add table fields
-        #     parameters[1].value.addTable(inputTable)
+        if parameters[0].value:
+            parameters[1].enabled = True
+        else:
+            parameters[1].enabled = False
 
         return
 
@@ -96,90 +95,38 @@ class Table_builder(object):
 
     def execute(self, parameters, messages):
         """The source code of the tool."""
-        arcpy.env.overwriteOutput = True
-        path = parameters[0].value
-        offset = 50  # param
-        table_width = 5  # param
-        table_boundaries_offset = 10  # param
+        input_file = parameters[0].value
+        output_path = str(parameters[1].value)
+        table_offset = parameters[2].value
+        table_width = parameters[3].value
+        table_boundaries_offset = parameters[4].value
+        field_names_offset = parameters[5].value
 
-        # Hardcoded
-        n_fields = 4
-        field_names_offset = 50
+        tb = table_builder.TableBuilder(
+            input_file,
+            offset=table_offset,
+            table_width=table_width,
+            table_boundaries_offset=table_boundaries_offset,
+            field_names_offset=field_names_offset
+        )
 
-        # mxd = arcpy.mapping.MapDocument("CURRENT")
-        Hole = namedtuple('Hole', ['name', 'x', 'y', 'length'])
-        hole_list = []
-        bottom_point = None
-        left_hole_x, right_hole_x = None, None
-        with arcpy.da.SearchCursor(path, ['name', "SHAPE@", 'length']) as cursor:
-            for row in cursor:
-                hole_list.append(Hole(row[0], row[1].firstPoint.X, row[1].firstPoint.Y, row[2]))
-                hole_bottom_point = row[1].lastPoint.Y
-                hole_x = row[1].firstPoint.X
-                if not bottom_point or hole_bottom_point < bottom_point:
-                    bottom_point = hole_bottom_point
-                if not left_hole_x or hole_x < left_hole_x:
-                    left_hole_x = hole_x
-                if not right_hole_x or hole_x > right_hole_x:
-                    right_hole_x = hole_x
-            arcpy.AddMessage(hole_list)
+        table = tb.create_table()
+        utils.write_shp(output_path, 'test.shp', 'POLYLINE', table)
 
-        table = []
-        for hole in hole_list:
-            hole_line = arcpy.Polyline(
-                arcpy.Array(
-                    [arcpy.Point(hole.x, bottom_point - offset - table_width),
-                     arcpy.Point(hole.x, bottom_point - offset - 2 * table_width)]
-                )
-            )
-            table.append(hole_line)
+        annotations = tb.create_annotations()
+        utils.write_shp(parameters[1].value, 'anno.shp', 'POINT', annotations,
+                        [('top', 'TEXT'), ('height', 'TEXT'), ('row_names', 'TEXT')])
 
-        for field_num in range(n_fields + 2):
-            if field_num == 3:
-                continue
-            table_line = arcpy.Polyline(
-                arcpy.Array(
-                    [arcpy.Point(left_hole_x - table_boundaries_offset - field_names_offset,
-                                 bottom_point - offset - table_width * field_num),
-                     arcpy.Point(right_hole_x + table_boundaries_offset,
-                                 bottom_point - offset - table_width * field_num)]
-                )
-            )
-            table.append(table_line)
+        mxd = arcpy.mapping.MapDocument("CURRENT")
+        df = arcpy.mapping.ListDataFrames(mxd)[0]
+        arcpy.mapping.AddLayer(df, arcpy.mapping.Layer(os.path.join(output_path, 'test.shp')), "BOTTOM")
+        arcpy.mapping.AddLayer(df, arcpy.mapping.Layer(os.path.join(output_path, 'anno.shp')), "BOTTOM")
 
-        vertical_lines = [
-            [(left_hole_x - table_boundaries_offset - field_names_offset,
-              bottom_point - offset),
-             (left_hole_x - table_boundaries_offset - field_names_offset,
-              bottom_point - offset - table_width * (n_fields + 1))
-             ],
-            [(left_hole_x - table_boundaries_offset,
-              bottom_point - offset),
-             (left_hole_x - table_boundaries_offset,
-              bottom_point - offset - table_width * (n_fields + 1))
-             ],
-            [(right_hole_x + table_boundaries_offset,
-              bottom_point - offset),
-             (right_hole_x + table_boundaries_offset,
-              bottom_point - offset - table_width * (n_fields + 1))
-             ],
-        ]
-        table.extend([arcpy.Polyline(arcpy.Array([arcpy.Point(*pt) for pt in line])) for line in vertical_lines])
-        arcpy.CopyFeatures_management(table, os.path.join(os.getcwd(), 'test.shp'))
+        # template_layer = arcpy.mapping.ListLayers(mxd, "anno", df)[0]
+        # source_Layer = arcpy.mapping.Layer(os.path.join(os.getcwd(), 'template.shp'))
 
-        annotations = []
-        hole_names = arcpy.Array([arcpy.Point(hole.x, bottom_point - offset - table_width) for hole in hole_list])
-
-        annotations.append(hole_names)
+        # base_label_classes = [lbl_class for lbl_class in template_layer.labelClasses]
+        # arcpy.AddMessage(base_label_classes)
+        # source_Layer.labelClasses = base_label_classes
 
         return
-
-# class NamedList(list):
-#     def __init__(self, seq, names):
-#         super(NamedList, self).__init__(seq)
-#         self.mapping = {k: v for k, v in zip(names, seq)}
-#
-#     def __getitem__(self, key):
-#         return self.mapping[key] if isinstance(key, str) else super(NamedList, self).__getitem__(key)
-#
-#
