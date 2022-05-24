@@ -24,7 +24,7 @@ class Toolbox(object):
 class TableBuilder(object):
     def __init__(self):
         """Define the tool (tool name is the name of the class)."""
-        self.label = "Table_builder"
+        self.label = "TableBuilder"
         self.description = "The script generates geological table by hole .shp files created CutsBuilder program"
         self.canRunInBackground = False
 
@@ -97,10 +97,10 @@ class TableBuilder(object):
         """The source code of the tool."""
         input_file = parameters[0].value
         output_path = str(parameters[1].value)
-        table_offset = parameters[2].value
-        table_width = parameters[3].value
-        table_boundaries_offset = parameters[4].value
-        field_names_offset = parameters[5].value
+        table_offset = parameters[2].value if parameters[2].value else 50
+        table_width = parameters[3].value if parameters[3].value else 5
+        table_boundaries_offset = parameters[4].value if parameters[4].value else 10
+        field_names_offset = parameters[5].value if parameters[5].value else 50
 
         tb = table_builder.TableBuilder(
             input_file,
