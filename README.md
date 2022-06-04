@@ -1,6 +1,6 @@
 # table_builder
 
-Generate geological table, below vertical cut of geological holes in Arcmap
+Generates geological table, below vertical cut of geological holes in Arcmap
 
 
 
